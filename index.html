@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Muestra Estadística - Investigación de Mercados</title>
+    <meta name="description" content="Calculadora profesional de tamaño de muestra para investigación de mercados con visualización de la campana de Gauss y explicación de fórmulas.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0f1e;
+            --bg-secondary: #111827;
+            --bg-card: rgba(255,255,255,0.05);
+            --bg-card-hover: rgba(255,255,255,0.08);
+            --border: rgba(255,255,255,0.1);
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --accent-violet: #8b5cf6;
+            --accent-rose: #f43f5e;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --gradient-main: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 50%, #0f172a 100%);
+            --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--gradient-main);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 20% 20%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 80%, rgba(139,92,246,0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrapper {
+            max-width: 950px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            text-align: center;
+            margin-bottom: 36px;
+            padding: 40px 20px;
+        }
+        .header .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(59,130,246,0.15);
+            border: 1px solid rgba(59,130,246,0.3);
+            border-radius: 50px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+        .header h1 {
+            font-size: clamp(1.8rem, 4vw, 2.8rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #f1f5f9, #93c5fd, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+            margin-bottom: 12px;
+        }
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 550px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        /* ─── Cards / Glass ─── */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 24px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            letter-spacing: 0.01em;
+        }
+        .card-title .icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+        }
+        .icon-blue  { background: rgba(59,130,246,0.2); }
+        .icon-cyan  { background: rgba(6,182,212,0.2); }
+        .icon-green { background: rgba(16,185,129,0.2); }
+        .icon-violet{ background: rgba(139,92,246,0.2); }
+
+        /* ─── Form Grid ─── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+
+        .form-group { display: flex; flex-direction: column; gap: 7px; }
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .input-wrapper input, .input-wrapper select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
+        }
+        .input-wrapper select option { background: #1e293b; color: #f1f5f9; }
+        .input-wrapper input:focus, .input-wrapper select:focus {
+            border-color: var(--accent-blue);
+            background: rgba(59,130,246,0.08);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .input-hint {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            line-height: 1.5;
+        }
+
+        /* ─── Tooltip ─── */
+        .help-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        .help-btn:hover { color: var(--accent-cyan); }
+        .tooltip-box {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 8px);
+            right: 0;
+            width: 260px;
+            background: #1e293b;
+            border: 1px solid rgba(6,182,212,0.3);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .input-wrapper:hover .tooltip-box { display: block; }
+
+        /* ─── Button ─── */
+        .btn-calculate {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.03em;
+            transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 4px 20px rgba(59,130,246,0.35);
+            margin-top: 6px;
+        }
+        .btn-calculate:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 8px 30px rgba(59,130,246,0.5); }
+        .btn-calculate:active { transform: translateY(0); }
+
+        /* ─── Result Box ─── */
+        .result-box {
+            display: none;
+            background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.08));
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 20px;
+        }
+        .result-main {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 16px;
+        }
+        .result-number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #34d399, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+        .result-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .result-label strong { color: var(--text-primary); display: block; font-size: 16px; margin-bottom: 2px; }
+        .result-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 50px;
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+        .tag-green { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+        .tag-yellow { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+        .tag-red    { background: rgba(244,63,94,0.15);  border: 1px solid rgba(244,63,94,0.3);  color: #fda4af; }
+
+        /* ─── Formula Panel ─── */
+        .formula-card {
+            background: rgba(139,92,246,0.07);
+            border: 1px solid rgba(139,92,246,0.2);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .formula-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.2);
+            padding: 4px;
+            border-radius: 10px;
+        }
+        .formula-tab {
+            flex: 1;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .formula-tab.active {
+            background: rgba(139,92,246,0.3);
+            color: #c4b5fd;
+            box-shadow: 0 2px 8px rgba(139,92,246,0.3);
+        }
+        .formula-panel { display: none; }
+        .formula-panel.active { display: block; }
+
+        .formula-display {
+            background: rgba(0,0,0,0.35);
+            border-radius: 12px;
+            padding: 20px 24px;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 1.3rem;
+            color: #e2e8f0;
+            text-align: center;
+            margin-bottom: 18px;
+            letter-spacing: 0.02em;
+            line-height: 1.8;
+            border: 1px solid rgba(139,92,246,0.15);
+        }
+        .formula-display .frac {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            margin: 0 6px;
+        }
+        .formula-display .num { border-bottom: 1px solid #94a3b8; padding-bottom: 2px; }
+        .formula-display .den { padding-top: 2px; }
+
+        .formula-vars {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .formula-var {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .formula-var .var-sym {
+            font-family: 'Georgia', serif;
+            font-weight: 700;
+            color: #c4b5fd;
+            margin-right: 4px;
+        }
+        .formula-var .var-name { color: var(--text-secondary); }
+
+        /* ─── Gauss Section ─── */
+        .gauss-section { display: none; }
+        .gauss-section.visible { display: block; }
+
+        .gauss-explanation {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        @media (max-width: 600px) { .gauss-explanation { grid-template-columns: 1fr; } }
+
+        .gauss-info-card {
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .gauss-info-blue   { background: rgba(59,130,246,0.1);  border: 1px solid rgba(59,130,246,0.25);  color: #93c5fd; }
+        .gauss-info-red    { background: rgba(244,63,94,0.1);   border: 1px solid rgba(244,63,94,0.25);   color: #fda4af; }
+        .gauss-info-green  { background: rgba(16,185,129,0.1);  border: 1px solid rgba(16,185,129,0.25);  color: #6ee7b7; }
+        .gauss-info-violet { background: rgba(139,92,246,0.1);  border: 1px solid rgba(139,92,246,0.25);  color: #c4b5fd; }
+
+        .gauss-info-card strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; opacity: 0.8; }
+
+        .canvas-wrapper {
+            position: relative;
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        /* ─── Stats Row ─── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 500px) { .stats-row { grid-template-columns: 1fr; } }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 18px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+        /* ─── Divider ─── */
+        .section-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 10px 0 24px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .section-divider::before, .section-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ─── Footer ─── */
+        .footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            padding: 20px 0;
+            line-height: 1.7;
+        }
+
+        /* ─── Animations ─── */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fadeInUp 0.5s ease-out forwards; }
+
+        @keyframes pulse-glow {
+            0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+            50% { box-shadow: 0 0 20px 4px rgba(59,130,246,0.3); }
+        }
+        .pulse { animation: pulse-glow 2s ease-in-out infinite; }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 420px) {
+            .result-main { flex-direction: column; align-items: flex-start; }
+            .result-number { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+    <!-- Header -->
+    <div class="header animate-in">
+        <div class="badge">📊 Investigación de Mercados</div>
+        <h1>Calculadora de Muestra Estadística</h1>
+        <p>Determina el tamaño óptimo de tu muestra con visualización de la Campana de Gauss y explicación detallada de fórmulas.</p>
+    </div>
+
+    <!-- Stats decorativas (se actualizan al calcular) -->
+    <div class="stats-row animate-in" id="statsRow" style="display:none;">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-n" style="color:#3b82f6;">—</div>
+            <div class="stat-label">Tamaño de Muestra</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-conf" style="color:#8b5cf6;">—</div>
+            <div class="stat-label">Nivel de Confianza</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-err" style="color:#10b981;">—</div>
+            <div class="stat-label">Margen de Error</div>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="glass-card animate-in">
+        <div class="card-title">
+            <span class="icon icon-blue">⚙️</span>
+            Parámetros del Cálculo
+        </div>
+
+        <div class="form-grid">
+
+            <!-- Nivel de Confianza -->
+            <div class="form-group">
+                <label>Nivel de Confianza</label>
+                <div class="input-wrapper">
+                    <select id="conf_level" onchange="actualizarZ()">
+                        <option value="1.645">90% — Z = 1.645</option>
+                        <option value="1.96" selected>95% — Z = 1.960</option>
+                        <option value="2.054">98% — Z = 2.054</option>
+                        <option value="2.576">99% — Z = 2.576</option>
+                        <option value="custom">Personalizado …</option>
+                    </select>
+                    <button class="help-btn" type="button">?
+                        <div class="tooltip-box">El nivel de confianza indica qué tan seguros queremos estar de que nuestros resultados son correctos. Un 95% significa que si repitiéramos el estudio 100 veces, en 95 ocasiones obtendríamos el mismo resultado.</div>
+                    </button>
+                </div>
+                <span class="input-hint">Probabilidad de que la estimación sea correcta</span>
+            </div>
+
+            <!-- Z personalizado -->
+            <div class="form-group" id="z_custom_group" style="display:none;">
+                <label>Valor Z personalizado</label>
+                <div class="input-wrapper">
+                    <input type="number" id="z_value" step="0.001" value="1.96" placeholder="Ej: 1.96">
+                </div>
+                <span class="input-hint">Valor crítico de la distribución normal estándar</span>
+            </div>
+
+            <!-- Z (oculto pero funcional) -->
+            <input type="hidden" id="z_final" value="1.96">
+
+            <!-- Proporción -->
+            <div class="form-group">
+                <label>Proporción Estimada (p)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="p_value" step="0.01" min="0.01" max="0.99" value="0.5" placeholder="0.50">
+                    <button class="help-btn" type="button">?
+                        <div class="tooltip-box">Proporción esperada del fenómeno a estudiar. Si no tienes datos previos, usa 0.5 (50%) pues maximiza el tamaño de muestra, garantizando mayor cobertura.</div>
+                    </button>
+                </div>
+                <span class="input-hint">Usa 0.5 si no tienes información previa (más conservador)</span>
+            </div>
+
+            <!-- Margen de Error -->
+            <div class="form-group">
+                <label>Margen de Error (E)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="e_value" step="0.005" min="0.001" max="0.3" value="0.05" placeholder="0.05">
+                    <button class="help-btn" type="button">?
+                        <div class="tooltip-box">La precisión deseada. Un error de 0.05 (5%) significa que tus estimaciones podrían desviarse ±5% del valor real. A menor margen de error, mayor tamaño de muestra necesario.</div>
+                    </button>
+                </div>
+                <span class="input-hint">0.05 = ±5% de precisión (valor estándar)</span>
+            </div>
+
+            <!-- Población -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Población Total (N) — Opcional</label>
+                <div class="input-wrapper">
+                    <input type="number" id="n_pop" placeholder="Ej: 5000 — dejar vacío para universo infinito" min="1">
+                    <button class="help-btn" type="button">?
+                        <div class="tooltip-box">Si tu población es menor a 100,000 personas, se aplica el ajuste de población finita, que reduce el tamaño de muestra necesario. Dejar vacío si la población es muy grande (≥ 100,000).</div>
+                    </button>
+                </div>
+                <span class="input-hint">Si N &lt; 100,000 se aplicará el factor de corrección para población finita</span>
+            </div>
+
+        </div>
+
+        <button class="btn-calculate pulse" onclick="calcularMuestra()" id="calcBtn">
+            ✦ Calcular Tamaño de Muestra
+        </button>
+
+        <!-- Resultado -->
+        <div id="resultado_box" class="result-box">
+            <div class="result-main">
+                <div class="result-number" id="muestra_final">—</div>
+                <div class="result-label">
+                    <strong>Encuestas requeridas</strong>
+                    Tamaño óptimo de la muestra estadística
+                </div>
+            </div>
+            <div class="result-tags" id="result_tags"></div>
+        </div>
+    </div>
+
+    <!-- Fórmulas -->
+    <div class="formula-card animate-in">
+        <div class="card-title">
+            <span class="icon icon-violet">📐</span>
+            Fórmulas Utilizadas
+        </div>
+
+        <div class="formula-tabs">
+            <button class="formula-tab active" onclick="showFormula('infinita', this)">📏 Población Infinita</button>
+            <button class="formula-tab" onclick="showFormula('finita', this)">👥 Población Finita</button>
+            <button class="formula-tab" onclick="showFormula('gauss', this)">📈 Distribución Normal</button>
+        </div>
+
+        <!-- Panel Infinita -->
+        <div class="formula-panel active" id="panel-infinita">
+            <div class="formula-display">
+                n =
+                <span class="frac">
+                    <span class="num">Z² · p · (1 − p)</span>
+                    <span class="den">E²</span>
+                </span>
+            </div>
+            <p style="color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; line-height:1.7;">
+                Se usa cuando la población es <strong style="color:#c4b5fd;">muy grande o desconocida</strong> (N ≥ 100,000).
+                La muestra depende únicamente del nivel de confianza, la varianza esperada y la precisión deseada — <em>no del tamaño total de la población</em>.
+            </p>
+            <div class="formula-vars">
+                <div class="formula-var"><span class="var-sym">n</span><span class="var-name">— Tamaño de muestra calculado</span></div>
+                <div class="formula-var"><span class="var-sym">Z</span><span class="var-name">— Valor crítico (nivel de confianza)</span></div>
+                <div class="formula-var"><span class="var-sym">p</span><span class="var-name">— Proporción esperada del evento</span></div>
+                <div class="formula-var"><span class="var-sym">1-p</span><span class="var-name">— Complemento (varianza máxima con p=0.5)</span></div>
+                <div class="formula-var"><span class="var-sym">E</span><span class="var-name">— Margen de error aceptable</span></div>
+            </div>
+        </div>
+
+        <!-- Panel Finita -->
+        <div class="formula-panel" id="panel-finita">
+            <div class="formula-display" style="font-size:1.15rem;">
+                <div style="margin-bottom:8px;">
+                    n₀ =
+                    <span class="frac">
+                        <span class="num">Z² · p · (1 − p)</span>
+                        <span class="den">E²</span>
+                    </span>
+                    &nbsp;→&nbsp; n<sub>f</sub> =
+                    <span class="frac">
+                        <span class="num">n₀ · N</span>
+                        <span class="den">N + n₀ − 1</span>
+                    </span>
+                </div>
+            </div>
+            <p style="color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; line-height:1.7;">
+                Primero se calcula la muestra para universo infinito (n₀), luego se aplica el
+                <strong style="color:#c4b5fd;">Factor de Corrección para Población Finita</strong>, que reduce el tamaño de muestra al conocer el total de elementos N.
+                Esto es correcto cuando N &lt; 100,000.
+            </p>
+            <div class="formula-vars">
+                <div class="formula-var"><span class="var-sym">n₀</span><span class="var-name">— Muestra para universo infinito</span></div>
+                <div class="formula-var"><span class="var-sym">N</span><span class="var-name">— Tamaño total de la población</span></div>
+                <div class="formula-var"><span class="var-sym">n<sub>f</sub></span><span class="var-name">— Muestra ajustada (resultado final)</span></div>
+                <div class="formula-var"><span class="var-sym">N+n₀−1</span><span class="var-name">— Denominador de ajuste poblacional</span></div>
+            </div>
+        </div>
+
+        <!-- Panel Gauss -->
+        <div class="formula-panel" id="panel-gauss">
+            <div class="formula-display" style="font-size:1.15rem;">
+                f(x) =
+                <span class="frac">
+                    <span class="num">1</span>
+                    <span class="den">σ√(2π)</span>
+                </span>
+                · e<sup>−½((x−μ)/σ)²</sup>
+            </div>
+            <p style="color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; line-height:1.7;">
+                La <strong style="color:#c4b5fd;">distribución normal estándar</strong> (μ=0, σ=1) describe la probabilidad de cada valor Z.
+                El área bajo la curva entre −Z y +Z representa el nivel de confianza: la probabilidad de que el verdadero parámetro caiga dentro del intervalo estimado.
+            </p>
+            <div class="formula-vars">
+                <div class="formula-var"><span class="var-sym">μ</span><span class="var-name">— Media (0 en distribución estándar)</span></div>
+                <div class="formula-var"><span class="var-sym">σ</span><span class="var-name">— Desviación estándar (1 en dist. estándar)</span></div>
+                <div class="formula-var"><span class="var-sym">e</span><span class="var-name">— Número de Euler ≈ 2.71828</span></div>
+                <div class="formula-var"><span class="var-sym">π</span><span class="var-name">— Pi ≈ 3.14159</span></div>
+                <div class="formula-var"><span class="var-sym">x</span><span class="var-name">— Valor (desviación estándar a evaluar)</span></div>
+                <div class="formula-var"><span class="var-sym">f(x)</span><span class="var-name">— Densidad de probabilidad en x</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campana de Gauss -->
+    <div class="gauss-section glass-card" id="gaussSection">
+        <div class="card-title">
+            <span class="icon icon-cyan">📈</span>
+            Campana de Gauss — Distribución Normal Estándar
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="campanaGauss" height="280"></canvas>
+        </div>
+
+        <div class="gauss-explanation" id="gaussExplanation">
+            <div class="gauss-info-card gauss-info-blue">
+                <strong>🔵 Área de Confianza (azul)</strong>
+                Zona entre −Z y +Z que representa el <span id="gauss_conf_pct">95%</span> de los datos.
+                Dentro de esta región caerán la mayoría de las respuestas reales de tu población.
+            </div>
+            <div class="gauss-info-card gauss-info-red">
+                <strong>🔴 Cola de Rechazo (rojo)</strong>
+                Zona fuera de ±Z. Representa el <span id="gauss_alpha_pct">5%</span> de margen de error
+                (α = error de tipo I). Probabilidad de rechazar resultados verdaderos.
+            </div>
+            <div class="gauss-info-card gauss-info-green">
+                <strong>📍 Valor Z = ±<span id="gauss_z_val">1.96</span></strong>
+                Puntos críticos que dividen la campana. El área entre estos límites define tu nivel de confianza.
+            </div>
+            <div class="gauss-info-card gauss-info-violet">
+                <strong>📐 Teorema del Límite Central</strong>
+                Con n ≥ 30, la distribución de medias muestrales tiende a la normal, lo que valida el uso de esta fórmula independientemente de la distribución original.
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Calculadora de Muestra Estadística · Investigación de Mercados<br>
+        <span style="opacity:0.6;">Basado en el Teorema del Límite Central y la Distribución Normal Estándar</span>
+    </div>
+
+</div>
+
+<script>
+    let chartInstance = null;
+
+    // Sync nivel de confianza
+    function actualizarZ() {
+        const sel = document.getElementById('conf_level');
+        const customGroup = document.getElementById('z_custom_group');
+        if (sel.value === 'custom') {
+            customGroup.style.display = 'flex';
+        } else {
+            customGroup.style.display = 'none';
+            document.getElementById('z_final').value = sel.value;
+        }
+    }
+
+    function getZ() {
+        const sel = document.getElementById('conf_level');
+        if (sel.value === 'custom') {
+            return parseFloat(document.getElementById('z_value').value) || 1.96;
+        }
+        return parseFloat(sel.value);
+    }
+
+    function getConfidencePct(z) {
+        // Aproximación: erf-based
+        const erfc_approx = (x) => {
+            const t = 1 / (1 + 0.3275911 * x);
+            const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+            return poly * Math.exp(-x * x);
+        };
+        const pct = (1 - erfc_approx(z / Math.sqrt(2)));
+        return (pct * 100).toFixed(1);
+    }
+
+    function calcularMuestra() {
+        const z = getZ();
+        const p = parseFloat(document.getElementById('p_value').value) || 0.5;
+        const e = parseFloat(document.getElementById('e_value').value) || 0.05;
+        const N_input = document.getElementById('n_pop').value;
+        const N = N_input ? parseFloat(N_input) : null;
+
+        // Fórmula universo infinito: n = (Z² * p * (1-p)) / E²
+        let n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
+        let n = n0;
+        let tags = [];
+
+        // Ajuste para población finita: nf = (n0 * N) / (N + n0 - 1)
+        let esFinita = N !== null && N > 0 && N < 100000;
+        if (esFinita) {
+            n = (n0 * N) / (N + n0 - 1);
+            tags.push({ text: `✅ Universo Finito (N = ${N.toLocaleString()})`, cls: 'tag-green' });
+            tags.push({ text: `📉 Reducción: ${Math.ceil(n0)} → ${Math.ceil(n)}`, cls: 'tag-green' });
+        } else {
+            tags.push({ text: '✅ Universo Infinito (Fórmula estándar)', cls: 'tag-green' });
+        }
+
+        const muestraFinal = Math.ceil(n);
+
+        if (muestraFinal < 30) {
+            tags.push({ text: '⚠️ n < 30 — Revisar Teorema del Límite Central', cls: 'tag-yellow' });
+        }
+
+        if (N !== null && muestraFinal > N) {
+            tags.push({ text: '❌ Muestra mayor que la población — Revisar parámetros', cls: 'tag-red' });
+        }
+
+        // Actualizar resultado
+        document.getElementById('muestra_final').textContent = muestraFinal.toLocaleString();
+        const tagsEl = document.getElementById('result_tags');
+        tagsEl.innerHTML = tags.map(t => `<span class="tag ${t.cls}">${t.text}</span>`).join('');
+        document.getElementById('resultado_box').style.display = 'block';
+
+        // Stats row
+        const confPct = getConfidencePct(z);
+        document.getElementById('stat-n').textContent = muestraFinal.toLocaleString();
+        document.getElementById('stat-conf').textContent = confPct + '%';
+        document.getElementById('stat-err').textContent = '±' + (e * 100).toFixed(1) + '%';
+        const statsRow = document.getElementById('statsRow');
+        statsRow.style.display = 'grid';
+        statsRow.style.animation = 'fadeInUp 0.4s ease-out';
+
+        // Actualizar explicación campana
+        document.getElementById('gauss_z_val').textContent = z.toFixed(3);
+        document.getElementById('gauss_conf_pct').textContent = confPct + '%';
+        document.getElementById('gauss_alpha_pct').textContent = (100 - parseFloat(confPct)).toFixed(1) + '%';
+
+        document.getElementById('gaussSection').classList.add('visible');
+
+        dibujarCampana(z);
+
+        // Scroll suave al resultado
+        setTimeout(() => {
+            document.getElementById('resultado_box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+    }
+
+    function dibujarCampana(z_score) {
+        const ctx = document.getElementById('campanaGauss').getContext('2d');
+        if (chartInstance) { chartInstance.destroy(); }
+
+        const labels = [];
+        const dataConf = [];
+        const dataTail = [];
+        const step = 0.07;
+
+        for (let i = -3.8; i <= 3.8; i = +(i + step).toFixed(3)) {
+            const x = +i.toFixed(3);
+            const y = (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x);
+            labels.push(x.toFixed(2));
+
+            const inConf = x >= -z_score && x <= z_score;
+            dataConf.push(inConf ? y : null);
+            dataTail.push(!inConf ? y : null);
+        }
+
+        const confPct = getConfidencePct(z_score);
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: `Área de Confianza (${confPct}%)`,
+                        data: dataConf,
+                        fill: true,
+                        backgroundColor: 'rgba(59,130,246,0.35)',
+                        borderColor: 'rgba(59,130,246,0.8)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        spanGaps: false
+                    },
+                    {
+                        label: `Cola de Rechazo (${(100 - parseFloat(confPct)).toFixed(1)}%)`,
+                        data: dataTail,
+                        fill: true,
+                        backgroundColor: 'rgba(244,63,94,0.35)',
+                        borderColor: 'rgba(244,63,94,0.8)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        spanGaps: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: { duration: 700, easing: 'easeInOutQuart' },
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Desviaciones Estándar (Z)',
+                            color: '#94a3b8',
+                            font: { size: 12, weight: '600', family: 'Inter' }
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            maxTicksLimit: 14,
+                            font: { size: 11, family: 'Inter' },
+                            callback: (val, i, ticks) => {
+                                const v = parseFloat(labels[i]);
+                                if (Math.abs(v) === 0 || Math.abs(Math.abs(v) - z_score) < 0.08 || Math.abs(v) === 1 || Math.abs(v) === 2 || Math.abs(v) === 3) {
+                                    return v.toFixed(v === 0 ? 0 : 2);
+                                }
+                                return '';
+                            }
+                        },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        display: false,
+                        grid: { color: 'rgba(255,255,255,0.04)' }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Distribución Normal Estándar — Z = ±${z_score.toFixed(3)} | Confianza: ${confPct}%`,
+                        color: '#e2e8f0',
+                        font: { size: 13.5, weight: '700', family: 'Inter' },
+                        padding: { bottom: 16 }
+                    },
+                    legend: {
+                        labels: {
+                            color: '#94a3b8',
+                            font: { size: 12, family: 'Inter' },
+                            boxWidth: 14,
+                            boxHeight: 14,
+                            borderRadius: 4,
+                            useBorderRadius: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15,23,42,0.95)',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#94a3b8',
+                        titleFont: { family: 'Inter', weight: '700' },
+                        bodyFont: { family: 'Inter' },
+                        callbacks: {
+                            title: (items) => `Z = ${items[0].label}`,
+                            label: (item) => {
+                                if (item.raw === null) return null;
+                                return ` f(Z) = ${item.raw.toFixed(4)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function showFormula(tab, btn) {
+        document.querySelectorAll('.formula-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.formula-tab').forEach(b => b.classList.remove('active'));
+        document.getElementById('panel-' + tab).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    // Inicializar Z
+    actualizarZ();
+</script>
+
+</body>
+</html>
